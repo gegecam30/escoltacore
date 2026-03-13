@@ -12,7 +12,6 @@ public class GuiListener implements Listener {
     public void onClick(InventoryClickEvent e) {
         InventoryHolder holder = e.getInventory().getHolder();
         if (!(holder instanceof EscoltaMenu menu)) return;
-
         e.setCancelled(true);
         if (e.getCurrentItem() == null) return;
         menu.handleMenu(e);

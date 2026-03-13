@@ -1,18 +1,20 @@
 name: EscoltaCore
-version: '1.0-SNAPSHOT'
+version: '2.0-SNAPSHOT'
 main: com.escoltacore.EscoltaCorePlugin
 api-version: '1.21'
 authors: [ _gengis ]
-description: Un minijuego Arcade. Concepto original de ElRichMC - Modo Escolta.
-softdepend: [PlaceholderAPI]
+description: Escort arcade minigame. Original concept by ElRichMC.
+softdepend: [ PlaceholderAPI ]
 
 commands:
   escolta:
-    description: Comandos principales del juego
-    permission: escoltacore.admin
-    usage: /escolta <create|join|leave|start|config|reload>
+    description: EscoltaCore main command
+    usage: /escolta <admin|user>
 
 permissions:
   escoltacore.admin:
-    description: Acceso a todos los comandos de EscoltaCore
+    description: Full admin access to EscoltaCore
     default: op
+  escoltacore.play:
+    description: Access to player commands
+    default: true

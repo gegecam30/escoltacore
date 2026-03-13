@@ -9,8 +9,8 @@ import org.jetbrains.annotations.NotNull;
 
 public abstract class EscoltaMenu implements InventoryHolder {
 
-    protected Inventory inventory;
-    protected Player viewer;
+    protected final Inventory inventory;
+    protected final Player viewer;
 
     public EscoltaMenu(Player viewer, int rows, String title) {
         this.viewer = viewer;

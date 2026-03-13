@@ -1,20 +1,40 @@
-settings:
-  radius: 15.0
-  punishment: "INSTANT_KILL"
-  damage-interval: 20
+# ============================================================
+#  EscoltaCore - config.yml
+# ============================================================
+
+# Storage backend: "sqlite" or "mysql"
+storage: sqlite
+
+mysql:
+  host: localhost
+  port: 3306
+  database: escoltacore
+  username: root
+  password: password
+  pool-size: 5
 
 game-loop:
+  # Minimum players needed to start any game
   min-players: 2
-  class-selection-time: 15
+  # Max players for PUBLIC arenas (admin-created)
+  max-players-public: 8
+  # Max players for PRIVATE lobbies (player-created)
+  max-players-private: 5
+  # Seconds before auto-start when a public lobby fills up
+  countdown: 10
 
 random-objective:
   blacklist:
     - BEDROCK
     - BARRIER
     - COMMAND_BLOCK
+    - CHAIN_COMMAND_BLOCK
+    - REPEATING_COMMAND_BLOCK
     - END_PORTAL_FRAME
     - STRUCTURE_VOID
     - LIGHT
     - SPAWNER
     - DRAGON_EGG
     - REINFORCED_DEEPSLATE
+    - STRUCTURE_BLOCK
+    - JIGSAW

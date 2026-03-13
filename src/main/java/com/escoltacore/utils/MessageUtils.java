@@ -11,93 +11,77 @@ import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class MessageUtils {
+public final class MessageUtils {
 
-    private static FileConfiguration messagesConfig;
-    private static final LegacyComponentSerializer LEGACY_SERIALIZER =
+    private static FileConfiguration cfg;
+
+    private static final LegacyComponentSerializer LEGACY =
             LegacyComponentSerializer.builder()
                     .character('§')
                     .hexColors()
                     .useUnusualXRepeatedCharacterHexFormat()
                     .build();
 
+    private MessageUtils() {}
+
     public static void init(EscoltaCorePlugin plugin) {
         File file = new File(plugin.getDataFolder(), "messages.yml");
-        if (!file.exists()) {
-            plugin.saveResource("messages.yml", false);
-        }
-        messagesConfig = YamlConfiguration.loadConfiguration(file);
+        if (!file.exists()) plugin.saveResource("messages.yml", false);
+        cfg = YamlConfiguration.loadConfiguration(file);
     }
 
-    /**
-     * Obtiene un String coloreado desde messages.yml.
-     * Útil para construir ítems, broadcasts, etc.
-     */
+    // ── Raw string (translated) ────────────────────────────────────────────────
+
+    /** Gets a translated string from messages.yml. */
     public static String get(String path) {
-        if (messagesConfig == null) return path;
-        String msg = messagesConfig.getString(path);
-        if (msg == null) return "§cMissing: " + path;
-        return ColorUtils.translate(msg);
+        if (cfg == null) return path;
+        String msg = cfg.getString(path);
+        return msg != null ? ColorUtils.translate(msg) : "§cMissing: " + path;
     }
 
-    /**
-     * Obtiene una lista de Strings coloreados desde messages.yml.
-     */
+    /** Gets a translated string list from messages.yml. */
     public static List<String> getList(String path) {
-        if (messagesConfig == null) return List.of();
-        List<String> list = messagesConfig.getStringList(path);
-        return list.stream().map(ColorUtils::translate).collect(Collectors.toList());
+        if (cfg == null) return List.of();
+        return cfg.getStringList(path).stream()
+                .map(ColorUtils::translate)
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Envía un mensaje con prefijo, buscando la key en messages.yml.
-     */
-    public static void send(CommandSender sender, String path) {
-        if (messagesConfig == null) return;
-        String msg = messagesConfig.getString(path);
-        String prefix = messagesConfig.getString("prefix", "");
+    // ── Component ─────────────────────────────────────────────────────────────
 
-        if (msg != null) {
-            sender.sendMessage(component(ColorUtils.translate(prefix) + ColorUtils.translate(msg)));
-        } else {
-            sender.sendMessage(component("§cMissing translation: " + path));
-        }
-    }
-
-    /**
-     * Envía un mensaje con prefijo + un placeholder reemplazado.
-     */
-    public static void send(CommandSender sender, String path, String placeholder, String value) {
-        if (messagesConfig == null) return;
-        String msg = messagesConfig.getString(path);
-        String prefix = messagesConfig.getString("prefix", "");
-        if (msg != null) {
-            msg = msg.replace(placeholder, value);
-            sender.sendMessage(component(ColorUtils.translate(prefix) + ColorUtils.translate(msg)));
-        }
-    }
-
-    /**
-     * Envía un texto raw (con & codes) directamente al sender.
-     */
-    public static void sendRaw(CommandSender sender, String text) {
-        sender.sendMessage(component(ColorUtils.translate(text)));
-    }
-
-    /**
-     * Convierte un String con § codes a un Adventure Component.
-     * Es el método central para Paper 1.21.1 Adventure API.
-     */
+    /** Converts any raw string (& + hex) to an Adventure Component. */
     public static Component component(String text) {
-        // Si ya pasó por ColorUtils.translate, tiene §. Si no, traducimos por si acaso.
-        String translated = ColorUtils.translate(text);
-        return LEGACY_SERIALIZER.deserialize(translated);
+        return LEGACY.deserialize(ColorUtils.translate(text));
     }
 
-    /**
-     * Convierte una key de messages.yml directamente a Component.
-     */
+    /** Gets a key from messages.yml and returns it as a Component. */
     public static Component componentFromKey(String path) {
         return component(get(path));
+    }
+
+    // ── Send helpers ──────────────────────────────────────────────────────────
+
+    /** Sends a prefixed message from messages.yml. */
+    public static void send(CommandSender sender, String path) {
+        String prefix = cfg != null ? ColorUtils.translate(cfg.getString("prefix", "")) : "";
+        sender.sendMessage(component(prefix + get(path)));
+    }
+
+    /** Sends a prefixed message with one placeholder replaced. */
+    public static void send(CommandSender sender, String path, String ph, String val) {
+        String prefix = cfg != null ? ColorUtils.translate(cfg.getString("prefix", "")) : "";
+        sender.sendMessage(component(prefix + get(path).replace(ph, val)));
+    }
+
+    /** Sends a prefixed message with two placeholders replaced. */
+    public static void send(CommandSender sender, String path, String ph1, String v1,
+                            String ph2, String v2) {
+        String prefix = cfg != null ? ColorUtils.translate(cfg.getString("prefix", "")) : "";
+        sender.sendMessage(component(prefix + get(path).replace(ph1, v1).replace(ph2, v2)));
+    }
+
+    /** Sends a raw text string (& codes translated). */
+    public static void sendRaw(CommandSender sender, String text) {
+        sender.sendMessage(component(text));
     }
 }

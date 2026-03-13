@@ -1,62 +1,131 @@
+# ============================================================
+#  EscoltaCore - messages.yml
+#  You can translate this file to any language.
+#  Colors: & codes and hex {#rrggbb}
+# ============================================================
+
 prefix: "{#ffaa00}[EscoltaCore] &f"
 
 # --- SYSTEM ---
-no-permission: "&cNo tienes permiso para hacer esto."
-only-players: "&cSolo los jugadores pueden ejecutar este comando."
-command-unknown: "&cComando desconocido. Escribe /escolta para ayuda."
+no-permission:    "&cYou don't have permission to do this."
+only-players:     "&cOnly players can run this command."
+player-not-found: "&cPlayer '&e%player%&c' is not online."
+command-unknown:  "&cUnknown command. Try /escolta user or /escolta admin."
 
-# --- ARENA ---
-arena-created: "&aLobby '&e%name%&a' creado. Usa el &eComparador&a para configurar."
-arena-exists: "&cYa existe una arena llamada '%name%'."
-arena-not-found: "&cNo se encontró la arena '%name%'."
-arena-join: "&e%player% &7se unió al lobby (&b%count%&7)."
-arena-leave: "&e%player% &7salió del lobby."
-arena-already-in: "&cYa estás en una partida. Usa /escolta leave."
-arena-not-in: "&cNo estás en ninguna partida."
-arena-full-start: "&cSolo el dueño puede iniciar la partida."
-arena-min-players: "&cSe necesitan al menos &e%min% jugadores &cpara iniciar."
-arena-started: "&aPartida iniciada. ¡Protege al objetivo!"
-arena-forced-stop: "&cLa partida ha sido detenida forzosamente."
-arena-owner-left: "&cEl dueño salió. El lobby '&e%name%&c' ha sido cerrado."
-arena-wait-reset: "&eArena reseteando... Esperando jugadores."
+# --- ARENA - GENERAL ---
+arena-not-found:   "&cArena '&e%name%&c' does not exist."
+arena-full:        "&cArena '&e%name%&c' is full &8(&e%count%&7/&e%max%&8)&c."
+arena-in-progress: "&cArena '&e%name%&c' already has a game in progress."
+
+# --- ARENA - ADMIN ---
+arena-created:     "&aPublic arena '&e%name%&a' created successfully."
+arena-exists:      "&cAn arena named '&e%name%&c' already exists."
+arena-deleted:     "&cArena '&e%name%&c' has been deleted."
+arena-spawn-set:   "&aSpawn point set for arena '&e%name%&a'."
+arena-no-spawn:    "&cArena '&e%name%&c' has no spawn. Use /escolta admin setspawn %name% first."
+arena-force-joined: "&aForced &e%player%&a into arena '&e%name%&a'."
+
+# --- ARENA - USER ---
+lobby-created:    "&aPrivate lobby '&e%name%&a' created! Invite friends with &e/escolta user invite <player>&a."
+lobby-exists:     "&cA lobby named '&e%name%&c' already exists."
+arena-join:       "&e%player% &7joined &8(&b%count%&7/&b%max%&8)&7."
+arena-leave:      "&e%player% &7left the lobby."
+arena-already-in: "&cYou are already in a game. Use &e/escolta user leave&c first."
+arena-not-in:     "&cYou are not in any game."
+arena-owner-left: "&cThe owner left. Lobby '&e%name%&c' has been closed."
+arena-wait-reset: "&eArena resetting... Waiting for players."
+
+# --- PLAY AGAIN VOTE ---
+vote-title:      "&7What would you like to do?"
+vote-play-again: "&a&l[▶ Play Again]"
+vote-leave:      "&c&l[✖ Leave]"
+vote-status:     "&7Votes — &aPlay Again: &f%play% &7| &cLeave: &f%leave% &7/ &f%total%"
+vote-restart:    "&aVote result: &l▶ Restarting!"
+vote-no-restart: "&cVote result: &lEnding the game."
+arena-min-players: "&cAt least &e%min% players &care needed to start."
+
+# --- KICK ---
+kick-success:      "&aPlayer &e%player%&a has been kicked."
+kick-target:       "&cYou were kicked from the lobby by &e%kicker%&c."
+kick-not-owner:    "&cOnly the lobby owner can kick players."
+kick-self:         "&cYou cannot kick yourself."
+kick-not-in-lobby: "&c%player% is not in your lobby."
+
+# --- INVITE ---
+invite-sent:            "&aInvite sent to &e%player%&a. Expires in 60s."
+invite-received:        "&e%sender% &ainvited you to join '&e%arena%&a'!"
+invite-accept:          "&a[✔ Accept]"
+invite-decline:         "&c[✘ Decline]"
+invite-accepted:        "&aYou joined '&e%arena%&a'."
+invite-declined:        "&cYou declined the invite from &e%sender%&c."
+invite-declined-sender: "&e%player% &cdeclined your invite."
+invite-expired:         "&cThe invite from &e%sender%&c has expired."
+invite-already-pending: "&cThat player already has a pending invite."
+invite-not-pending:     "&cYou have no pending invite."
+
+# --- LOBBIES LIST ---
+lobbies-header: "&8&m-----------&r &6&lPublic Lobbies &8&m-----------"
+lobbies-entry:  " &7[&b%name%&7] &f%count%&7/&f%max% &8- &e%status%"
+lobbies-entry-click: "&7Click to join"
+lobbies-footer: "&8&m------------------------------------"
+lobbies-empty:  "&7No public lobbies available right now."
 
 # --- GAMEPLAY ---
-game-intro-title: "&e¡ERES EL OBJETIVO!"
-game-intro-subtitle: "&7Sobrevive mientras encuentran el ítem."
-defender-intro-title: "&a¡ERES UN DEFENSOR!"
-defender-intro-subtitle: "&7Protege al Escoltado."
+game-starting-countdown: "&aGame starting in &e%seconds%&a second(s)!"
+game-intro-title:    "&e&lYOU ARE THE TARGET!"
+game-intro-subtitle: "&7Survive while they find the item."
+defender-intro-title:    "&a&lYOU ARE A DEFENDER!"
+defender-intro-subtitle: "&7Find the item and protect the Escort."
 
-objective-broadcast: "&f  OBJETIVO: Encuentra {#00ffff}%item%"
-escort-broadcast: "&f  OBJETIVO VIVO: {#ffaa00}%player%"
-radius-warning: "&c&l⚠ ¡VUELVE AL CENTRO!"
+objective-chat:        "&8&m------------------------------------"
+objective-chat-item:   "  &fFIND: &b%item%"
+objective-chat-target: "  &fPROTECT: {#ffaa00}%player%"
+objective-chat-end:    "&8&m------------------------------------"
 
-victory-title: "&a&l¡VICTORIA!"
-victory-subtitle: "&e%player% encontró el ítem."
-defeat-title: "&c&lFIN DE LA PARTIDA"
-defeat-subtitle: "&7El Objetivo ha muerto."
-defeat-out-of-bounds: "%player% salió de los límites."
+objective-bossbar: "&fFind: &b%item%"
+lobby-bossbar: "&eWaiting... &f%count%&7/&f%max%"
+radius-warning: "&c&l⚠ WARNING! RETURN TO CENTER!"
+
+victory-title:    "&a&lVICTORY!"
+victory-subtitle: "&e%player% found the item!"
+defeat-title:     "&c&lGAME OVER"
+defeat-subtitle:  "&7The Target has been eliminated."
+defeat-out-of-bounds: "%player% went out of bounds."
+
+# --- STATS ---
+stats-header:  "&8&m---------&r &6&lYour Stats &8&m---------"
+stats-played:  "  &7Games Played: &f%played%"
+stats-won:     "  &7Games Won:    &f%won%"
+stats-lost:    "  &7Games Lost:   &f%lost%"
+stats-ratio:   "  &7Win Rate:     &f%ratio%%"
+stats-footer:  "&8&m--------------------------------"
 
 # --- ITEMS ---
 items:
   config-tool:
-    name: "&e&lConfiguración de Arena"
+    name: "&e&lArena Configuration"
     lore:
-      - "&7Click derecho para abrir"
-      - "&7el menú de configuración."
+      - "&7Right-click to open"
+      - "&7the settings menu."
   class-selector:
-    name: "&a&lSelector de Clase"
+    name: "&a&lClass Selector"
     lore:
-      - "&7Click derecho para elegir"
-      - "&7tu kit de juego."
+      - "&7Right-click to choose"
+      - "&7your class."
+  leave-item:
+    name: "&c&lLeave Game"
+    lore:
+      - "&7Right-click to leave"
+      - "&7the current lobby."
+  objective-display:
+    name: "&b&lOBJECTIVE"
+    lore:
+      - "&7Find this item to win!"
+      - ""
+      - "&f%item%"
+      - ""
+      - "&8(Slot locked)"
 
 # --- GUI ---
 gui:
   config-title: "&8Config: %arena%"
-  help:
-    - "&e--- EscoltaCore Ayuda ---"
-    - "&6/escolta create <nombre> &7- Crear un lobby"
-    - "&6/escolta join <nombre> &7- Unirse a un lobby"
-    - "&6/escolta leave &7- Salir del lobby actual"
-    - "&6/escolta start &7- Iniciar la partida"
-    - "&6/escolta config &7- Abrir configuración (dueño)"
-    - "&6/escolta reload &7- Recargar config (admin)"

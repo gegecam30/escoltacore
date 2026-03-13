@@ -1,8 +1,6 @@
 package com.escoltacore.commands;
 
 import com.escoltacore.EscoltaCorePlugin;
-import com.escoltacore.arena.GameArena;
-import com.escoltacore.gui.ArenaConfigMenu;
 import com.escoltacore.utils.MessageUtils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,68 +15,39 @@ import java.util.List;
 
 public class CoreCommand implements CommandExecutor, TabCompleter {
 
-    private final EscoltaCorePlugin plugin;
+    private final AdminCommand adminCmd;
+    private final UserCommand  userCmd;
 
     public CoreCommand(EscoltaCorePlugin plugin) {
-        this.plugin = plugin;
+        this.adminCmd = new AdminCommand(plugin);
+        this.userCmd  = new UserCommand(plugin);
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd,
                              @NotNull String label, @NotNull String[] args) {
-        if (!(sender instanceof Player p)) {
-            MessageUtils.sendRaw(sender, "&cOnly players.");
-            return true;
-        }
-
         if (args.length == 0) {
-            sendHelp(p);
+            if (sender instanceof Player p) sendRootHelp(p);
+            else MessageUtils.sendRaw(sender, "&eUsage: /escolta <admin|user> <subcommand>");
             return true;
         }
 
         switch (args[0].toLowerCase()) {
-            case "create" -> {
-                if (args.length < 2) { MessageUtils.sendRaw(p, "&cUso: /escolta create <nombre>"); return true; }
-                plugin.getArenaManager().createArena(p, args[1]);
+            case "admin" -> {
+                return adminCmd.handle(sender, args);
             }
-            case "join" -> {
-                if (args.length < 2) { MessageUtils.sendRaw(p, "&cUso: /escolta join <nombre>"); return true; }
-                plugin.getArenaManager().joinArena(p, args[1]);
-            }
-            case "leave"  -> plugin.getArenaManager().leaveArena(p);
-            case "start"  -> {
-                GameArena arena = plugin.getArenaManager().getArena(p);
-                if (arena == null) { MessageUtils.send(p, "arena-not-in"); return true; }
-                arena.start(p);
-            }
-            case "config" -> {
-                GameArena arena = plugin.getArenaManager().getArena(p);
-                if (arena != null && arena.getOwnerId().equals(p.getUniqueId())) {
-                    new ArenaConfigMenu(p, arena).open();
-                } else {
-                    MessageUtils.sendRaw(p, "&cNo eres el dueño de ninguna arena.");
+            case "user" -> {
+                if (!(sender instanceof Player p)) {
+                    MessageUtils.sendRaw(sender, "&cOnly players can use /escolta user.");
+                    return true;
                 }
+                return userCmd.handle(p, args);
             }
-            case "reload" -> {
-                plugin.reloadConfig();
-                MessageUtils.init(plugin);
-                MessageUtils.sendRaw(p, "&aConfiguración recargada.");
+            default -> {
+                if (sender instanceof Player p) sendRootHelp(p);
+                else MessageUtils.sendRaw(sender, "&eUsage: /escolta <admin|user> <subcommand>");
+                return true;
             }
-            default -> sendHelp(p);
-        }
-        return true;
-    }
-
-    private void sendHelp(Player p) {
-        List<String> helpList = plugin.getConfig().getStringList("gui.help");
-        if (helpList.isEmpty()) {
-            MessageUtils.sendRaw(p, "&6--- EscoltaCore Help ---");
-            MessageUtils.sendRaw(p, "&e/escolta create <nombre>");
-            MessageUtils.sendRaw(p, "&e/escolta join <nombre>");
-            MessageUtils.sendRaw(p, "&e/escolta leave");
-            MessageUtils.sendRaw(p, "&e/escolta start");
-        } else {
-            helpList.forEach(line -> MessageUtils.sendRaw(p, line));
         }
     }
 
@@ -86,8 +55,24 @@ public class CoreCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command cmd,
                                       @NotNull String label, @NotNull String[] args) {
         if (args.length == 1) {
-            return List.of("create", "join", "leave", "start", "config", "reload");
+            List<String> options = new ArrayList<>();
+            // "user" is always visible to players; "admin" only if they have the permission
+            if (sender instanceof Player) options.add("user");
+            if (sender.hasPermission("escoltacore.admin")) options.add("admin");
+            return options;
         }
-        return Collections.emptyList();
+        return switch (args[0].toLowerCase()) {
+            case "admin" -> sender.hasPermission("escoltacore.admin")
+                    ? adminCmd.tabComplete(args) : Collections.emptyList();
+            case "user"  -> userCmd.tabComplete(args);
+            default      -> Collections.emptyList();
+        };
+    }
+
+    private void sendRootHelp(Player p) {
+        MessageUtils.sendRaw(p, "&6&lEscoltaCore");
+        MessageUtils.sendRaw(p, "&e/escolta user  &7- Player commands");
+        if (p.hasPermission("escoltacore.admin"))
+            MessageUtils.sendRaw(p, "&e/escolta admin &7- Admin commands");
     }
 }
