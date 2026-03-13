@@ -1,0 +1,15 @@
+com\escoltacore\EscoltaCorePlugin.class
+com\escoltacore\arena\GameState.class
+com\escoltacore\listeners\GameListener.class
+com\escoltacore\managers\ArenaManager.class
+com\escoltacore\utils\EscoltaMenu.class
+com\escoltacore\commands\CoreCommand.class
+com\escoltacore\utils\ItemBuilder.class
+com\escoltacore\tasks\RadiusTask.class
+com\escoltacore\arena\GameArena.class
+com\escoltacore\hooks\EscoltaExpansion.class
+com\escoltacore\listeners\GuiListener.class
+com\escoltacore\gui\ArenaConfigMenu.class
+com\escoltacore\utils\ColorUtils.class
+com\escoltacore\managers\ItemManager.class
+com\escoltacore\utils\MessageUtils.class

@@ -1,0 +1,20 @@
+settings:
+  # Radio en bloques (double)
+  radius: 15.0
+  # Opciones: INSTANT_KILL, DAMAGE
+  punishment: "INSTANT_KILL"
+  # Si el castigo es DAMAGE, cada cuántos ticks se aplica (20 ticks = 1 seg)
+  damage-interval: 20
+  
+game-loop:
+  min-players: 2
+  class-selection-time: 15
+
+random-objective:
+  blacklist:
+    - BEDROCK
+    - BARRIER
+    - COMMAND_BLOCK
+    - END_PORTAL_FRAME
+    - STRUCTURE_VOID
+    - LIGHT

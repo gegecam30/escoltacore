@@ -1,0 +1,60 @@
+prefix: "{#ffaa00}[EscoltaCore] &f"
+
+# --- SYSTEM MESSAGES ---
+no-permission: "&cYou don't have permission to do this."
+only-players: "&cOnly players can execute this command."
+command-unknown: "&cUnknown command. Type /escolta for help."
+
+# --- ARENA MESSAGES ---
+arena-created: "&aLobby '&e%name%&a' created! Use the &eComparator&a to configure."
+arena-exists: "&cArena '%name%' already exists."
+arena-not-found: "&cArena '%name%' not found."
+arena-join: "&e%player% &7has joined the lobby (&b%count%&7)."
+arena-leave: "&e%player% &7has left the lobby."
+arena-already-in: "&cYou are already in a game. Use /escolta leave."
+arena-not-in: "&cYou are not in a game."
+arena-full-start: "&cOnly the owner can start the game."
+arena-min-players: "&cNeed at least %min% players to start."
+arena-started: "&aGame started! Protect the target."
+arena-forced-stop: "&cThe game has been stopped forcefully."
+arena-owner-left: "&cThe owner left. The lobby '%name%' has been closed."
+arena-wait-reset: "&eArena resetting... Waiting for players."
+
+# --- GAMEPLAY MESSAGES ---
+game-intro-title: "&eYOU ARE THE TARGET!"
+game-intro-subtitle: "&7Survive while they find the item."
+defender-intro-title: "&aYOU ARE A DEFENDER!"
+defender-intro-subtitle: "&7Protect the Escort."
+
+objective-broadcast: "&f  OBJECTIVE: Find {#00ffff}%item%"
+escort-broadcast: "&f  TARGET: {#ffaa00}%player%"
+radius-warning: "&c&lWARNING! RETURN TO THE CENTER!"
+
+victory-title: "&a&lVICTORY!"
+victory-subtitle: "&e%player% found the item!"
+defeat-title: "&c&lGAME OVER"
+defeat-subtitle: "&7The Target has died."
+defeat-out-of-bounds: "%player% went out of bounds."
+
+# --- ITEMS ---
+items:
+  config-tool:
+    name: "&e&lArena Configuration"
+    lore:
+      - "&7Right-click to open"
+      - "&7settings menu."
+  class-selector:
+    name: "&a&lClass Selector"
+    lore:
+      - "&7Right-click to choose"
+      - "&7your kit."
+
+# --- GUI ---
+gui:
+  config-title: "&8Config: %arena%"
+  help:
+    - "&e--- EscoltaCore Help ---"
+    - "&6/escolta create <name> &7- Create a lobby"
+    - "&6/escolta join <name> &7- Join a lobby"
+    - "&6/escolta leave &7- Leave current lobby"
+    - "&6/escolta start &7- Start the game"
