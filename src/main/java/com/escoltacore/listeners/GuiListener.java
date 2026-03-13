@@ -10,18 +10,11 @@ public class GuiListener implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        // ¿El inventario tiene un dueño (Holder)?
         InventoryHolder holder = e.getInventory().getHolder();
+        if (!(holder instanceof EscoltaMenu menu)) return;
 
-        // ¿El dueño es uno de NUESTROS menús?
-        if (holder instanceof EscoltaMenu) {
-            e.setCancelled(true); // Bloquear que muevan ítems por defecto
-            
-            if (e.getCurrentItem() == null) return;
-
-            // Delegar la lógica al propio menú
-            EscoltaMenu menu = (EscoltaMenu) holder;
-            menu.handleMenu(e);
-        }
+        e.setCancelled(true);
+        if (e.getCurrentItem() == null) return;
+        menu.handleMenu(e);
     }
 }

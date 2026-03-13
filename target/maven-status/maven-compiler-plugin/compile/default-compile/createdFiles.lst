@@ -2,6 +2,7 @@ com\escoltacore\EscoltaCorePlugin.class
 com\escoltacore\arena\GameState.class
 com\escoltacore\listeners\GameListener.class
 com\escoltacore\managers\ArenaManager.class
+com\escoltacore\tasks\RadiusTask$1.class
 com\escoltacore\utils\EscoltaMenu.class
 com\escoltacore\commands\CoreCommand.class
 com\escoltacore\utils\ItemBuilder.class

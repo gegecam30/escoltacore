@@ -1,60 +1,62 @@
 prefix: "{#ffaa00}[EscoltaCore] &f"
 
-# --- SYSTEM MESSAGES ---
-no-permission: "&cYou don't have permission to do this."
-only-players: "&cOnly players can execute this command."
-command-unknown: "&cUnknown command. Type /escolta for help."
+# --- SYSTEM ---
+no-permission: "&cNo tienes permiso para hacer esto."
+only-players: "&cSolo los jugadores pueden ejecutar este comando."
+command-unknown: "&cComando desconocido. Escribe /escolta para ayuda."
 
-# --- ARENA MESSAGES ---
-arena-created: "&aLobby '&e%name%&a' created! Use the &eComparator&a to configure."
-arena-exists: "&cArena '%name%' already exists."
-arena-not-found: "&cArena '%name%' not found."
-arena-join: "&e%player% &7has joined the lobby (&b%count%&7)."
-arena-leave: "&e%player% &7has left the lobby."
-arena-already-in: "&cYou are already in a game. Use /escolta leave."
-arena-not-in: "&cYou are not in a game."
-arena-full-start: "&cOnly the owner can start the game."
-arena-min-players: "&cNeed at least %min% players to start."
-arena-started: "&aGame started! Protect the target."
-arena-forced-stop: "&cThe game has been stopped forcefully."
-arena-owner-left: "&cThe owner left. The lobby '%name%' has been closed."
-arena-wait-reset: "&eArena resetting... Waiting for players."
+# --- ARENA ---
+arena-created: "&aLobby '&e%name%&a' creado. Usa el &eComparador&a para configurar."
+arena-exists: "&cYa existe una arena llamada '%name%'."
+arena-not-found: "&cNo se encontró la arena '%name%'."
+arena-join: "&e%player% &7se unió al lobby (&b%count%&7)."
+arena-leave: "&e%player% &7salió del lobby."
+arena-already-in: "&cYa estás en una partida. Usa /escolta leave."
+arena-not-in: "&cNo estás en ninguna partida."
+arena-full-start: "&cSolo el dueño puede iniciar la partida."
+arena-min-players: "&cSe necesitan al menos &e%min% jugadores &cpara iniciar."
+arena-started: "&aPartida iniciada. ¡Protege al objetivo!"
+arena-forced-stop: "&cLa partida ha sido detenida forzosamente."
+arena-owner-left: "&cEl dueño salió. El lobby '&e%name%&c' ha sido cerrado."
+arena-wait-reset: "&eArena reseteando... Esperando jugadores."
 
-# --- GAMEPLAY MESSAGES ---
-game-intro-title: "&eYOU ARE THE TARGET!"
-game-intro-subtitle: "&7Survive while they find the item."
-defender-intro-title: "&aYOU ARE A DEFENDER!"
-defender-intro-subtitle: "&7Protect the Escort."
+# --- GAMEPLAY ---
+game-intro-title: "&e¡ERES EL OBJETIVO!"
+game-intro-subtitle: "&7Sobrevive mientras encuentran el ítem."
+defender-intro-title: "&a¡ERES UN DEFENSOR!"
+defender-intro-subtitle: "&7Protege al Escoltado."
 
-objective-broadcast: "&f  OBJECTIVE: Find {#00ffff}%item%"
-escort-broadcast: "&f  TARGET: {#ffaa00}%player%"
-radius-warning: "&c&lWARNING! RETURN TO THE CENTER!"
+objective-broadcast: "&f  OBJETIVO: Encuentra {#00ffff}%item%"
+escort-broadcast: "&f  OBJETIVO VIVO: {#ffaa00}%player%"
+radius-warning: "&c&l⚠ ¡VUELVE AL CENTRO!"
 
-victory-title: "&a&lVICTORY!"
-victory-subtitle: "&e%player% found the item!"
-defeat-title: "&c&lGAME OVER"
-defeat-subtitle: "&7The Target has died."
-defeat-out-of-bounds: "%player% went out of bounds."
+victory-title: "&a&l¡VICTORIA!"
+victory-subtitle: "&e%player% encontró el ítem."
+defeat-title: "&c&lFIN DE LA PARTIDA"
+defeat-subtitle: "&7El Objetivo ha muerto."
+defeat-out-of-bounds: "%player% salió de los límites."
 
 # --- ITEMS ---
 items:
   config-tool:
-    name: "&e&lArena Configuration"
+    name: "&e&lConfiguración de Arena"
     lore:
-      - "&7Right-click to open"
-      - "&7settings menu."
+      - "&7Click derecho para abrir"
+      - "&7el menú de configuración."
   class-selector:
-    name: "&a&lClass Selector"
+    name: "&a&lSelector de Clase"
     lore:
-      - "&7Right-click to choose"
-      - "&7your kit."
+      - "&7Click derecho para elegir"
+      - "&7tu kit de juego."
 
 # --- GUI ---
 gui:
   config-title: "&8Config: %arena%"
   help:
-    - "&e--- EscoltaCore Help ---"
-    - "&6/escolta create <name> &7- Create a lobby"
-    - "&6/escolta join <name> &7- Join a lobby"
-    - "&6/escolta leave &7- Leave current lobby"
-    - "&6/escolta start &7- Start the game"
+    - "&e--- EscoltaCore Ayuda ---"
+    - "&6/escolta create <nombre> &7- Crear un lobby"
+    - "&6/escolta join <nombre> &7- Unirse a un lobby"
+    - "&6/escolta leave &7- Salir del lobby actual"
+    - "&6/escolta start &7- Iniciar la partida"
+    - "&6/escolta config &7- Abrir configuración (dueño)"
+    - "&6/escolta reload &7- Recargar config (admin)"

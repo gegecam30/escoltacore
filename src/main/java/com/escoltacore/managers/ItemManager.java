@@ -21,42 +21,24 @@ public class ItemManager {
         List<String> configList = plugin.getConfig().getStringList("random-objective.blacklist");
         for (String key : configList) {
             try {
-                Material mat = Material.valueOf(key.toUpperCase());
-                blacklist.add(mat);
+                blacklist.add(Material.valueOf(key.toUpperCase()));
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().log(Level.WARNING, "Material inválido en blacklist: " + key);
             }
         }
     }
 
-    /**
-     * Busca un material aleatorio que sea bloque, ítem y sólido,
-     * y que no esté en la lista negra.
-     */
     public Material getRandomTarget() {
         Material[] materials = Material.values();
-        Material selected = null;
-        
-        // Intentamos hasta 100 veces encontrar uno válido para evitar bucles infinitos
-        // si la blacklist fuera enorme.
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 200; i++) {
             Material candidate = materials[ThreadLocalRandom.current().nextInt(materials.length)];
-            
-            if (isValid(candidate)) {
-                selected = candidate;
-                break;
-            }
+            if (isValid(candidate)) return candidate;
         }
-        
-        // Fallback por si acaso (Piedra)
-        return selected != null ? selected : Material.STONE;
+        return Material.STONE; // fallback
     }
 
     private boolean isValid(Material m) {
-        // Filtrar aire, legacy y cosas que no son bloques físicos o items obtenibles
         if (!m.isItem() || !m.isSolid() || m.isAir()) return false;
-        
-        // Filtrar blacklist
         return !blacklist.contains(m);
     }
 }

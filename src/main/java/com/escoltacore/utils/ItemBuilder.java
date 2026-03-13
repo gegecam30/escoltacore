@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ItemBuilder {
+
     private final ItemStack item;
     private final ItemMeta meta;
 
@@ -19,16 +20,15 @@ public class ItemBuilder {
     }
 
     public ItemBuilder name(String name) {
-        // Usamos nuestro util de colores para traducir y luego convertir a componente
         meta.displayName(MessageUtils.component(name));
         return this;
     }
 
     public ItemBuilder lore(String... lore) {
-        List<Component> loreComponents = Arrays.stream(lore)
+        List<Component> components = Arrays.stream(lore)
                 .map(MessageUtils::component)
                 .collect(Collectors.toList());
-        meta.lore(loreComponents);
+        meta.lore(components);
         return this;
     }
 

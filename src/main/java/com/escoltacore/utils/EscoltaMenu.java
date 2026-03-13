@@ -14,14 +14,10 @@ public abstract class EscoltaMenu implements InventoryHolder {
 
     public EscoltaMenu(Player viewer, int rows, String title) {
         this.viewer = viewer;
-        // Creamos el inventario asignando a "this" como el dueño (Holder)
         this.inventory = Bukkit.createInventory(this, rows * 9, MessageUtils.component(title));
     }
 
-    // Método abstracto: Cada menú debe definir sus propios ítems
     public abstract void setMenuItems();
-
-    // Método abstracto: Cada menú define qué pasa al hacer click
     public abstract void handleMenu(InventoryClickEvent e);
 
     public void open() {

@@ -12,8 +12,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerDropItemEvent; // IMPORTANTE
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class GameListener implements Listener {
@@ -24,22 +25,21 @@ public class GameListener implements Listener {
         this.plugin = plugin;
     }
 
-    // --- NUEVO: EVITAR TIRAR ÍTEMS EN EL LOBBY ---
+    /** Prohibir tirar ítems en el lobby */
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        Player p = e.getPlayer();
-        GameArena arena = plugin.getArenaManager().getArena(p);
-        
-        // Si está en el lobby (WAITING), prohibido tirar nada (items de config/clases)
+        GameArena arena = plugin.getArenaManager().getArena(e.getPlayer());
         if (arena != null && arena.getState() == GameState.WAITING) {
             e.setCancelled(true);
         }
     }
 
+    /** Click con ítem de configuración o selector de clases */
     @EventHandler
     public void onInteract(PlayerInteractEvent e) {
-        if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        
+        if (e.getAction() != Action.RIGHT_CLICK_AIR
+                && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+
         Player p = e.getPlayer();
         ItemStack item = e.getItem();
         if (item == null) return;
@@ -47,54 +47,58 @@ public class GameListener implements Listener {
         GameArena arena = plugin.getArenaManager().getArena(p);
         if (arena == null || arena.getState() != GameState.WAITING) return;
 
-        if (item.getType() == Material.COMPARATOR) {
-            if (arena.getOwnerId().equals(p.getUniqueId())) {
-                new ArenaConfigMenu(p, arena).open();
-                e.setCancelled(true);
-            }
+        if (item.getType() == Material.COMPARATOR
+                && arena.getOwnerId().equals(p.getUniqueId())) {
+            new ArenaConfigMenu(p, arena).open();
+            e.setCancelled(true);
         }
-        
+
         if (item.getType() == Material.NETHER_STAR) {
-            MessageUtils.sendRaw(p, "&7[Classes] &eComing soon...");
+            MessageUtils.sendRaw(p, "&7[Clases] &ePróximamente...");
             e.setCancelled(true);
         }
     }
 
+    /** Muerte de un jugador en la partida */
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
         Player victim = e.getEntity();
         GameArena arena = plugin.getArenaManager().getArena(victim);
-        
-        // Si está en una arena (Jugando o Esperando), borrar SIEMPRE los drops
-        // Esto evita dupes de items de lobby o items de partida
+
         if (arena != null) {
-            e.getDrops().clear(); 
+            e.getDrops().clear();
             e.setDroppedExp(0);
         }
 
-        if (arena != null && arena.getState() == GameState.RUNNING) {
-            if (arena.isPlayerInGame(victim)) {
-                arena.endGame(false, victim.getName());
-                e.setDeathMessage(null); 
-            }
+        if (arena != null && arena.getState() == GameState.RUNNING
+                && arena.isPlayerInGame(victim)) {
+            arena.endGame(false, victim.getName());
+            e.setDeathMessage(null);
         }
     }
-    
+
+    /** Recogida del ítem objetivo → victoria */
     @EventHandler
     public void onPickup(EntityPickupItemEvent e) {
-        if (!(e.getEntity() instanceof Player)) return;
-        Player p = (Player) e.getEntity();
+        if (!(e.getEntity() instanceof Player p)) return;
         GameArena arena = plugin.getArenaManager().getArena(p);
-        
+
         if (arena == null || arena.getState() != GameState.RUNNING) return;
         if (!arena.isPlayerInGame(p)) return;
 
-        Material pickedType = e.getItem().getItemStack().getType();
-        
-        if (pickedType == arena.getTargetItem()) {
+        if (e.getItem().getItemStack().getType() == arena.getTargetItem()) {
+            e.setCancelled(true);
+            e.getItem().remove();
             arena.endGame(true, p.getName());
-            e.setCancelled(true); 
-            e.getItem().remove(); 
+        }
+    }
+
+    /** Salida del servidor: limpiar la arena */
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        GameArena arena = plugin.getArenaManager().getArena(e.getPlayer());
+        if (arena != null) {
+            plugin.getArenaManager().leaveArena(e.getPlayer());
         }
     }
 }

@@ -1,11 +1,8 @@
 settings:
-  # Radio en bloques (double)
   radius: 15.0
-  # Opciones: INSTANT_KILL, DAMAGE
   punishment: "INSTANT_KILL"
-  # Si el castigo es DAMAGE, cada cuántos ticks se aplica (20 ticks = 1 seg)
   damage-interval: 20
-  
+
 game-loop:
   min-players: 2
   class-selection-time: 15
@@ -18,3 +15,6 @@ random-objective:
     - END_PORTAL_FRAME
     - STRUCTURE_VOID
     - LIGHT
+    - SPAWNER
+    - DRAGON_EGG
+    - REINFORCED_DEEPSLATE

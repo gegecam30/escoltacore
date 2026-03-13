@@ -14,65 +14,35 @@ public class EscoltaExpansion extends PlaceholderExpansion {
         this.plugin = plugin;
     }
 
-    @Override
-    public @NotNull String getIdentifier() {
-        return "escoltacore";
-    }
-
-    @Override
-    public @NotNull String getAuthor() {
-        return "TuUsuario";
-    }
-
-    @Override
-    public @NotNull String getVersion() {
-        return plugin.getDescription().getVersion();
-    }
-
-    @Override
-    public boolean persist() {
-        return true;
-    }
+    @Override public @NotNull String getIdentifier() { return "escoltacore"; }
+    @Override public @NotNull String getAuthor()     { return "_gengis"; }
+    @Override public @NotNull String getVersion()    { return plugin.getDescription().getVersion(); }
+    @Override public boolean persist()               { return true; }
 
     @Override
     public String onPlaceholderRequest(Player player, @NotNull String params) {
         if (player == null) return "";
 
-        // CORRECCIÓN: Obtenemos la arena específica del jugador
         GameArena arena = plugin.getArenaManager().getArena(player);
 
-        // Si el jugador NO está en una arena, devolvemos valores por defecto
         if (arena == null) {
-            if (params.equalsIgnoreCase("status")) return "Lobby";
-            if (params.equalsIgnoreCase("role")) return "Sin Rol";
-            if (params.equalsIgnoreCase("radius")) return "0";
-            if (params.equalsIgnoreCase("target_item")) return "Ninguno";
-            return "";
+            return switch (params.toLowerCase()) {
+                case "status"      -> "Lobby";
+                case "role"        -> "Sin Rol";
+                case "radius"      -> "0";
+                case "target_item" -> "Ninguno";
+                default            -> "";
+            };
         }
 
-        // Si SÍ está en arena, devolvemos los datos de SU partida
-        if (params.equalsIgnoreCase("status")) {
-            return arena.getState().name();
-        }
-
-        if (params.equalsIgnoreCase("radius")) {
-            return String.valueOf(arena.getRadius());
-        }
-
-        if (params.equalsIgnoreCase("target_item")) {
-            if (arena.getTargetItem() != null) {
-                return arena.getTargetItem().name();
-            }
-            return "Esperando...";
-        }
-
-        if (params.equalsIgnoreCase("role")) {
-            if (player.getUniqueId().equals(arena.getEscoltadoId())) {
-                return "Escoltado";
-            }
-            return "Defensor";
-        }
-
-        return null; 
+        return switch (params.toLowerCase()) {
+            case "status"      -> arena.getState().name();
+            case "radius"      -> String.valueOf((int) arena.getRadius());
+            case "target_item" -> arena.getTargetItem() != null
+                    ? arena.getTargetItem().name() : "Esperando...";
+            case "role"        -> player.getUniqueId().equals(arena.getEscoltadoId())
+                    ? "Escoltado" : "Defensor";
+            default            -> null;
+        };
     }
 }
