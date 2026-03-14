@@ -1,10 +1,12 @@
 com\escoltacore\database\MySQLProvider.class
 com\escoltacore\arena\GameState.class
+com\escoltacore\map\SpriteMapManager.class
 com\escoltacore\tasks\RadiusTask$1.class
 com\escoltacore\commands\AdminCommand.class
 com\escoltacore\tasks\CountdownTask.class
 com\escoltacore\database\DatabaseProvider.class
 com\escoltacore\managers\ArenaManager$InviteData.class
+com\escoltacore\gui\ParticleSelectMenu$ParticleEntry.class
 com\escoltacore\gui\ArenaConfigMenu.class
 com\escoltacore\utils\MessageUtils.class
 com\escoltacore\commands\UserCommand.class
@@ -16,9 +18,11 @@ com\escoltacore\commands\CoreCommand.class
 com\escoltacore\utils\ItemBuilder.class
 com\escoltacore\tasks\RadiusTask.class
 com\escoltacore\database\DatabaseProvider$PlayerStats.class
+com\escoltacore\gui\ParticleSelectMenu.class
 com\escoltacore\arena\GameArena.class
 com\escoltacore\hooks\EscoltaExpansion.class
 com\escoltacore\database\SQLiteProvider.class
 com\escoltacore\listeners\GuiListener.class
 com\escoltacore\utils\ColorUtils.class
+com\escoltacore\map\SpriteRenderer.class
 com\escoltacore\managers\ItemManager.class

@@ -10,33 +10,13 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
-import java.util.List;
-
 /**
  * Config GUI for private lobby owners.
- * Particle names are correct for Paper 1.21.1.
+ * Particle slot now opens ParticleSelectMenu instead of cycling inline.
  */
 public class ArenaConfigMenu extends EscoltaMenu {
 
     private final GameArena arena;
-
-    private static final List<Particle> PARTICLES = List.of(
-            Particle.DUST,           // cyan glow (was REDSTONE)
-            Particle.FLAME,          // orange flame
-            Particle.HAPPY_VILLAGER, // green sparkle (was VILLAGER_HAPPY)
-            Particle.HEART,          // pink heart
-            Particle.NOTE,           // music note
-            Particle.WITCH           // purple magic (was SPELL_WITCH)
-    );
-
-    private static final List<String> PARTICLE_NAMES = List.of(
-            "&b✦ Cyan Dust",
-            "&6✦ Flame",
-            "&a✦ Happy Villager",
-            "&d✦ Heart",
-            "&e✦ Note",
-            "&5✦ Witch"
-    );
 
     public ArenaConfigMenu(Player viewer, GameArena arena) {
         super(viewer, 3,
@@ -59,18 +39,22 @@ public class ArenaConfigMenu extends EscoltaMenu {
                         "&8Min: 5  |  Max: 50"
                 ).build());
 
-        // Slot 13 — Particle
-        int idx  = PARTICLES.indexOf(arena.getParticle());
-        if (idx < 0) idx = 0;
-        int next = (idx + 1) % PARTICLES.size();
+        // Slot 13 — Particle (opens submenu)
+        String particleLabel = "&e" + arena.getParticle().name()
+                .replace("_", " ").toLowerCase();
+        // Capitalise first letter
+        if (!particleLabel.isEmpty())
+            particleLabel = particleLabel.substring(0, 3)
+                    + Character.toUpperCase(particleLabel.charAt(3))
+                    + particleLabel.substring(4);
 
         inventory.setItem(13, new ItemBuilder(Material.BLAZE_POWDER)
                 .name("&6Border Particle")
                 .lore(
-                        "&7Current: " + PARTICLE_NAMES.get(idx),
-                        "&7Next:    " + PARTICLE_NAMES.get(next),
+                        "&7Current: " + particleLabel,
                         "",
-                        "&eClick&7: Cycle style"
+                        "&eClick&7: Open particle selector",
+                        "&815 styles available"
                 ).build());
 
         // Slot 15 — Start
@@ -92,11 +76,8 @@ public class ArenaConfigMenu extends EscoltaMenu {
                 setMenuItems();
             }
             case 13 -> {
-                int idx  = PARTICLES.indexOf(arena.getParticle());
-                if (idx < 0) idx = 0;
-                arena.setParticle(PARTICLES.get((idx + 1) % PARTICLES.size()));
-                p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
-                setMenuItems();
+                p.playSound(p.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 1f);
+                new ParticleSelectMenu(p, arena).open();
             }
             case 15 -> {
                 p.closeInventory();

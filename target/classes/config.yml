@@ -24,6 +24,9 @@ game-loop:
   countdown: 10
 
 random-objective:
+  # ── Blacklist ───────────────────────────────────────────────────────────────
+  # Materials that will NEVER be chosen as the objective in full-random mode.
+  # Ignored when sprite-pool is active.
   blacklist:
     - BEDROCK
     - BARRIER
@@ -38,3 +41,28 @@ random-objective:
     - REINFORCED_DEEPSLATE
     - STRUCTURE_BLOCK
     - JIGSAW
+
+  # ── Sprite pool ─────────────────────────────────────────────────────────────
+  # When this list is populated, ONLY these materials will be chosen as objectives.
+  # Each entry must have a matching PNG in plugins/EscoltaCore/sprites/<MATERIAL>.png
+  # (16x16 or higher resolution, will be scaled to 128x128 on the map).
+  #
+  # Leave empty to use full-random mode (blacklist applies instead).
+  #
+  # Currently supported sprites (shipped with the plugin):
+  #   DIAMOND, EMERALD, GOLD_INGOT, IRON_INGOT, COAL,
+  #   OAK_LOG, STONE, OBSIDIAN, SAND, GRAVEL
+  #
+  # To add more: drop a PNG named <MATERIAL_NAME>.png into
+  # plugins/EscoltaCore/sprites/ and add the material name here.
+  sprite-pool:
+    - DIAMOND
+    - EMERALD
+    - GOLD_INGOT
+    - IRON_INGOT
+    - COAL
+    - OAK_LOG
+    - STONE
+    - OBSIDIAN
+    - SAND
+    - GRAVEL

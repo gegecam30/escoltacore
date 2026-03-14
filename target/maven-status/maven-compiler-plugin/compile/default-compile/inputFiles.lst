@@ -2,6 +2,7 @@ C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\managers\ArenaMana
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\arena\GameArena.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\database\DatabaseProvider.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\commands\UserCommand.java
+C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\gui\ParticleSelectMenu.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\tasks\RadiusTask.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\hooks\EscoltaExpansion.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\utils\EscoltaMenu.java
@@ -11,9 +12,11 @@ C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\database\MySQLProv
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\database\SQLiteProvider.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\listeners\GuiListener.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\arena\GameState.java
+C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\map\SpriteMapManager.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\utils\ColorUtils.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\utils\ItemBuilder.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\gui\ArenaConfigMenu.java
+C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\map\SpriteRenderer.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\commands\CoreCommand.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\tasks\CountdownTask.java
 C:\Users\pc\Desktop\EscoltaCore\src\main\java\com\escoltacore\EscoltaCorePlugin.java

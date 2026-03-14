@@ -105,7 +105,7 @@ public class ArenaManager {
 
     public void createPrivateLobby(Player creator, String name) {
         if (arenas.containsKey(name.toLowerCase())) {
-            MessageUtils.send(creator, "lobby-exists");
+            MessageUtils.send(creator, "lobby-exists", "%name%", name);
             return;
         }
         if (playerArenaMap.containsKey(creator.getUniqueId())) {

@@ -1,8 +1,2 @@
 package com.escoltacore.arena;
-
-public enum GameState {
-    WAITING,
-    STARTING,   // countdown active (public arenas)
-    RUNNING,
-    ENDING
-}
+public enum GameState { WAITING, STARTING, RUNNING, ENDING }

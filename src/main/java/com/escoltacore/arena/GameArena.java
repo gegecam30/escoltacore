@@ -27,7 +27,7 @@ public class GameArena {
     private final UUID ownerId;
     private final boolean publicArena;
 
-    // ── Config (mutable so reload can update them) ────────────────────────────
+    // ── Config (mutable — updated by reload) ─────────────────────────────────
     private int maxPlayers;
     private double radius = 15.0;
     private Particle particle = Particle.DUST;
@@ -43,18 +43,17 @@ public class GameArena {
     private RadiusTask    radiusTask;
     private CountdownTask countdownTask;
 
-    // BossBars — one for lobby (waiting), one for in-game (objective)
+    // BossBars
     private BossBar lobbyBar;
     private BossBar gameBar;
 
-    // Play Again vote — populated during ENDING phase
+    // Play Again vote
     private final Set<UUID> votePlayAgain = new HashSet<>();
     private final Set<UUID> voteLeave     = new HashSet<>();
 
-    // PDC key for the objective display item in slot 8 during game
+    // PDC keys (shared with GameListener for item protection)
     public static final NamespacedKey OBJECTIVE_KEY =
             new NamespacedKey("escoltacore", "objective_display");
-    // PDC key for the leave item in slot 8 during lobby
     public static final NamespacedKey LEAVE_KEY =
             new NamespacedKey("escoltacore", "leave_item");
 
@@ -62,6 +61,7 @@ public class GameArena {
 
     // ── Constructors ──────────────────────────────────────────────────────────
 
+    /** Public arena (admin-created, persists in arenas.yml) */
     public GameArena(EscoltaCorePlugin plugin, String name, int maxPlayers, Location spawnPoint) {
         this.plugin      = plugin;
         this.name        = name;
@@ -72,6 +72,7 @@ public class GameArena {
         this.itemManager = new ItemManager(plugin);
     }
 
+    /** Private lobby (player-created, deleted when owner leaves) */
     public GameArena(EscoltaCorePlugin plugin, String name, UUID ownerId, int maxPlayers) {
         this.plugin      = plugin;
         this.name        = name;
@@ -100,7 +101,6 @@ public class GameArena {
         players.add(p.getUniqueId());
         giveLobbyItems(p);
 
-        // Show existing lobby bossbar to new player, then refresh text
         if (lobbyBar != null) p.showBossBar(lobbyBar);
         updateLobbyBar();
 
@@ -120,7 +120,6 @@ public class GameArena {
         players.remove(p.getUniqueId());
         p.getInventory().clear();
 
-        // Hide both bars from leaving player
         if (lobbyBar != null) p.hideBossBar(lobbyBar);
         if (gameBar  != null) p.hideBossBar(gameBar);
 
@@ -146,7 +145,7 @@ public class GameArena {
                 .build();
         p.getInventory().setItem(4, classSelector);
 
-        // Slot 8 — Leave item (Redstone Dust)
+        // Slot 8 — Leave item
         ItemStack leaveItem = new ItemBuilder(Material.REDSTONE)
                 .name(MessageUtils.get("items.leave-item.name"))
                 .lore(MessageUtils.getList("items.leave-item.lore").toArray(new String[0]))
@@ -167,14 +166,13 @@ public class GameArena {
     // ── Lobby BossBar ─────────────────────────────────────────────────────────
 
     public void initLobbyBar() {
-        // Destroy old bar first so it always reflects current state
-        destroyLobbyBar();
+        destroyLobbyBar(); // always rebuild fresh
         String text = MessageUtils.get("lobby-bossbar")
                 .replace("%count%", String.valueOf(players.size()))
                 .replace("%max%",   String.valueOf(maxPlayers));
         lobbyBar = BossBar.bossBar(
                 MessageUtils.component(text),
-                players.isEmpty() ? 0f : (float) players.size() / maxPlayers,
+                players.isEmpty() ? 0f : Math.min(1f, (float) players.size() / maxPlayers),
                 BossBar.Color.YELLOW,
                 BossBar.Overlay.PROGRESS
         );
@@ -228,32 +226,25 @@ public class GameArena {
                 return;
             }
         }
-
         int min = plugin.getConfig().getInt("game-loop.min-players", 2);
         if (players.size() < min) {
             if (initiator != null)
                 MessageUtils.send(initiator, "arena-min-players", "%min%", String.valueOf(min));
             return;
         }
-
         if (countdownTask != null) { countdownTask.cancel(); countdownTask = null; }
-
-        // Destroy lobby bar — game bar takes over
         destroyLobbyBar();
 
         state = GameState.STARTING;
-
         List<UUID> list = new ArrayList<>(players);
         Collections.shuffle(list);
         this.escortId   = list.get(0);
         this.targetItem = itemManager.getRandomTarget();
 
         Location spawn = resolveSpawn();
-
         for (UUID uuid : players) {
             Player p = Bukkit.getPlayer(uuid);
             if (p == null) continue;
-
             p.teleport(spawn);
             p.getInventory().clear();
             p.setHealth(20);
@@ -264,46 +255,51 @@ public class GameArena {
                 sendTitle(p, "game-intro-title", "game-intro-subtitle");
             } else {
                 sendTitle(p, "defender-intro-title", "defender-intro-subtitle");
-                giveObjectiveItem(p);
             }
+            giveObjectiveItem(p); // todos reciben el mapa del objetivo
         }
-
         state = GameState.RUNNING;
         broadcastObjective();
         spawnGameBar();
-
         radiusTask = new RadiusTask(plugin, this, radius, particle);
         radiusTask.runTaskTimer(plugin, 0L, 1L);
     }
 
     public void start() { start(null); }
 
-    // ── Objective display item (slot 8, defenders only) ───────────────────────
+    // ── Objective display item ────────────────────────────────────────────────
 
     private void giveObjectiveItem(Player p) {
-        String itemName = formatItemName(targetItem);
-
+        String itemName    = formatItemName(targetItem);
+        String displayName = MessageUtils.get("items.objective-display.name");
         List<String> loreLines = MessageUtils.getList("items.objective-display.lore")
-                .stream()
-                .map(line -> line.replace("%item%", itemName))
-                .toList();
+                .stream().map(line -> line.replace("%item%", itemName)).toList();
 
-        ItemStack obj = new ItemBuilder(Material.KNOWLEDGE_BOOK)
-                .name(MessageUtils.get("items.objective-display.name"))
-                .lore(loreLines.toArray(new String[0]))
-                .glow()
-                .tag(OBJECTIVE_KEY)
-                .build();
+        // Try sprite map first
+        com.escoltacore.map.SpriteMapManager smm = plugin.getSpriteMapManager();
+        ItemStack obj = null;
+        if (smm != null && smm.hasSprite(targetItem)) {
+            obj = smm.createMapItem(targetItem, name, displayName,
+                    loreLines.toArray(new String[0]));
+        }
+        // Fallback to KNOWLEDGE_BOOK with PDC tag
+        if (obj == null) {
+            obj = new ItemBuilder(Material.KNOWLEDGE_BOOK)
+                    .name(displayName)
+                    .lore(loreLines.toArray(new String[0]))
+                    .glow()
+                    .tag(OBJECTIVE_KEY)
+                    .build();
+        }
         p.getInventory().setItem(8, obj);
     }
 
-    // ── Broadcast ─────────────────────────────────────────────────────────────
+    // ── Broadcast helpers ─────────────────────────────────────────────────────
 
     private void broadcastObjective() {
-        String itemName     = formatItemName(targetItem);
-        Player escortPlayer = Bukkit.getPlayer(escortId);
-        String escortName   = escortPlayer != null ? escortPlayer.getName() : "?";
-
+        String itemName   = formatItemName(targetItem);
+        Player escortP    = Bukkit.getPlayer(escortId);
+        String escortName = escortP != null ? escortP.getName() : "?";
         broadcastRaw(MessageUtils.get("objective-chat"));
         broadcastRaw(MessageUtils.get("objective-chat-item").replace("%item%", itemName));
         broadcastRaw(MessageUtils.get("objective-chat-target").replace("%player%", escortName));
@@ -315,12 +311,8 @@ public class GameArena {
     private void spawnGameBar() {
         String title = MessageUtils.get("objective-bossbar")
                 .replace("%item%", formatItemName(targetItem));
-        gameBar = BossBar.bossBar(
-                MessageUtils.component(title),
-                1.0f,
-                BossBar.Color.BLUE,
-                BossBar.Overlay.PROGRESS
-        );
+        gameBar = BossBar.bossBar(MessageUtils.component(title), 1.0f,
+                BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
         for (UUID uuid : players) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) p.showBossBar(gameBar);
@@ -344,7 +336,7 @@ public class GameArena {
         clearGameBar();
         state = GameState.ENDING;
 
-        // Record stats
+        // Stats
         UUID winnerUuid = null;
         if (victory) {
             for (UUID uuid : players) {
@@ -366,8 +358,7 @@ public class GameArena {
             broadcastTitle(MessageUtils.get("defeat-title"), MessageUtils.get("defeat-subtitle"));
             playSoundGlobal(Sound.ENTITY_WITHER_DEATH, 1f, 0.5f);
         }
-
-        // Start Play Again vote after 2s (give players time to see the title)
+        // Show vote after 2 s (players see the title first)
         Bukkit.getScheduler().runTaskLater(plugin, this::startVote, 40L);
     }
 
@@ -378,55 +369,42 @@ public class GameArena {
         votePlayAgain.clear();
         voteLeave.clear();
 
-        // Build clickable message
-        Component voteMsg = LegacyComponentSerializer.legacyAmpersand()
-                .deserialize(MessageUtils.get("vote-title"))
+        var leg = LegacyComponentSerializer.legacyAmpersand();
+        Component msg = leg.deserialize(MessageUtils.get("vote-title"))
                 .append(Component.text(" "))
-                .append(LegacyComponentSerializer.legacyAmpersand()
-                        .deserialize(MessageUtils.get("vote-play-again"))
+                .append(leg.deserialize(MessageUtils.get("vote-play-again"))
                         .clickEvent(ClickEvent.runCommand("/escolta user voteplay " + name))
-                        .hoverEvent(HoverEvent.showText(Component.text("Play Again!"))))
-                .append(Component.text(" "))
-                .append(LegacyComponentSerializer.legacyAmpersand()
-                        .deserialize(MessageUtils.get("vote-leave"))
+                        .hoverEvent(HoverEvent.showText(Component.text("Vote: Play Again"))))
+                .append(Component.text("  "))
+                .append(leg.deserialize(MessageUtils.get("vote-leave"))
                         .clickEvent(ClickEvent.runCommand("/escolta user voteleave " + name))
-                        .hoverEvent(HoverEvent.showText(Component.text("Leave"))));
+                        .hoverEvent(HoverEvent.showText(Component.text("Vote: Leave"))));
 
         for (UUID uuid : players) {
             Player p = Bukkit.getPlayer(uuid);
-            if (p != null) p.sendMessage(voteMsg);
+            if (p != null) p.sendMessage(msg);
         }
-
-        // Auto-resolve after 15 seconds
+        // Auto-resolve after 15 s
         Bukkit.getScheduler().runTaskLater(plugin, this::resolveVote, 20L * 15);
     }
 
     public void castVote(Player p, boolean playAgain) {
-        if (state != GameState.ENDING) return;
-        if (!players.contains(p.getUniqueId())) return;
-
-        // Remove from opposite bucket first
+        if (state != GameState.ENDING || !players.contains(p.getUniqueId())) return;
         if (playAgain) { voteLeave.remove(p.getUniqueId());     votePlayAgain.add(p.getUniqueId()); }
-        else            { votePlayAgain.remove(p.getUniqueId()); voteLeave.add(p.getUniqueId()); }
+        else           { votePlayAgain.remove(p.getUniqueId()); voteLeave.add(p.getUniqueId()); }
 
-        String status = MessageUtils.get("vote-status")
+        broadcastRaw(MessageUtils.get("vote-status")
                 .replace("%play%",  String.valueOf(votePlayAgain.size()))
                 .replace("%leave%", String.valueOf(voteLeave.size()))
-                .replace("%total%", String.valueOf(players.size()));
-        broadcastRaw(status);
+                .replace("%total%", String.valueOf(players.size())));
 
-        // Resolve early if everyone voted
-        if (votePlayAgain.size() + voteLeave.size() >= players.size()) {
-            resolveVote();
-        }
+        if (votePlayAgain.size() + voteLeave.size() >= players.size()) resolveVote();
     }
 
     private void resolveVote() {
-        if (state != GameState.ENDING) return; // already resolved
-
-        boolean restart = votePlayAgain.size() >= voteLeave.size()
-                && !votePlayAgain.isEmpty();
-
+        if (state != GameState.ENDING) return;
+        boolean restart = !votePlayAgain.isEmpty()
+                && votePlayAgain.size() >= voteLeave.size();
         votePlayAgain.clear();
         voteLeave.clear();
 
@@ -435,34 +413,31 @@ public class GameArena {
             softReset();
         } else {
             broadcastRaw(MessageUtils.get("vote-no-restart"));
-            // Kick everyone — they chose to leave (or nobody voted)
             softReset();
-            // Kick all players out of the arena after reset
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (UUID uuid : new HashSet<>(players)) {
                     Player p = Bukkit.getPlayer(uuid);
-                    if (p != null) {
-                        plugin.getArenaManager().leaveArena(p);
-                    }
+                    if (p != null) plugin.getArenaManager().leaveArena(p);
                 }
             }, 20L);
         }
     }
 
-    // ── Soft reset (back to WAITING, same player list) ────────────────────────
+    // ── Soft reset ────────────────────────────────────────────────────────────
 
     private void softReset() {
-        // Clear all game state
         state      = GameState.WAITING;
         escortId   = null;
         targetItem = null;
         votePlayAgain.clear();
         voteLeave.clear();
 
-        // Clear any lingering bars
+        // Free old MapViews before giving new lobby items
+        if (plugin.getSpriteMapManager() != null)
+            plugin.getSpriteMapManager().freeArenaMaps(name);
+
         clearGameBar();
 
-        // Restore players to lobby state
         for (UUID uuid : players) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) {
@@ -474,35 +449,28 @@ public class GameArena {
             }
         }
 
-        // Restore lobby bossbar
-        initLobbyBar();
-
+        initLobbyBar(); // always rebuilds fresh (destroys old one internally)
         broadcastRaw(MessageUtils.get("arena-wait-reset"));
 
-        // Public arena: if already full after reset (Play Again case), restart countdown
-        // Private arena: owner starts manually via the config comparator
-        if (publicArena && players.size() >= maxPlayers) {
-            startCountdown();
-        }
+        // Public + full → restart countdown (Play Again case)
+        if (publicArena && players.size() >= maxPlayers) startCountdown();
     }
 
-    // ── Force stop (hard shutdown) ────────────────────────────────────────────
+    // ── Force stop ────────────────────────────────────────────────────────────
 
     public void forceStop() {
         if (radiusTask    != null) { radiusTask.cancel();    radiusTask    = null; }
         if (countdownTask != null) { countdownTask.cancel(); countdownTask = null; }
         clearGameBar();
         destroyLobbyBar();
+        if (plugin.getSpriteMapManager() != null)
+            plugin.getSpriteMapManager().freeArenaMaps(name);
         state = GameState.WAITING;
         votePlayAgain.clear();
         voteLeave.clear();
         for (UUID uuid : new HashSet<>(players)) {
             Player p = Bukkit.getPlayer(uuid);
-            if (p != null) {
-                p.getInventory().clear();
-                p.setHealth(20);
-                p.setFoodLevel(20);
-            }
+            if (p != null) { p.getInventory().clear(); p.setHealth(20); p.setFoodLevel(20); }
         }
         players.clear();
     }
@@ -523,26 +491,18 @@ public class GameArena {
         }
     }
 
-    private void broadcastTitle(String titleStr, String subStr) {
-        Title title = Title.title(
-                MessageUtils.component(titleStr),
-                MessageUtils.component(subStr),
-                Title.Times.times(
-                        Duration.ofMillis(400), Duration.ofSeconds(3), Duration.ofMillis(600))
-        );
+    private void broadcastTitle(String t, String s) {
+        Title title = Title.title(MessageUtils.component(t), MessageUtils.component(s),
+                Title.Times.times(Duration.ofMillis(400), Duration.ofSeconds(3), Duration.ofMillis(600)));
         for (UUID uuid : players) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) p.showTitle(title);
         }
     }
 
-    private void sendTitle(Player p, String titleKey, String subKey) {
-        p.showTitle(Title.title(
-                MessageUtils.componentFromKey(titleKey),
-                MessageUtils.componentFromKey(subKey),
-                Title.Times.times(
-                        Duration.ofMillis(300), Duration.ofSeconds(2), Duration.ofMillis(500))
-        ));
+    private void sendTitle(Player p, String tKey, String sKey) {
+        p.showTitle(Title.title(MessageUtils.componentFromKey(tKey), MessageUtils.componentFromKey(sKey),
+                Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(2), Duration.ofMillis(500))));
     }
 
     private void playSoundGlobal(Sound s, float vol, float pitch) {
@@ -555,30 +515,29 @@ public class GameArena {
     public static String formatItemName(Material m) {
         if (m == null) return "?";
         StringBuilder sb = new StringBuilder();
-        for (String word : m.name().toLowerCase().replace('_', ' ').split(" ")) {
-            sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(' ');
-        }
+        for (String w : m.name().toLowerCase().replace('_', ' ').split(" "))
+            sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(' ');
         return sb.toString().trim();
     }
 
     // ── Getters / Setters ─────────────────────────────────────────────────────
 
-    public String    getName()                { return name; }
-    public UUID      getOwnerId()             { return ownerId; }
-    public boolean   isPublic()               { return publicArena; }
-    public GameState getState()               { return state; }
-    public UUID      getEscortId()            { return escortId; }
-    public Material  getTargetItem()          { return targetItem; }
-    public double    getRadius()              { return radius; }
-    public void      setRadius(double r)      { this.radius = r; }
-    public Particle  getParticle()            { return particle; }
-    public void      setParticle(Particle p)  { this.particle = p; }
-    public int       getMaxPlayers()          { return maxPlayers; }
-    public void      setMaxPlayers(int m)     { this.maxPlayers = m; updateLobbyBar(); }
-    public Location  getSpawnPoint()          { return spawnPoint; }
-    public void      setSpawnPoint(Location l){ this.spawnPoint = l; }
-    public boolean   isPlayerInGame(Player p) { return players.contains(p.getUniqueId()); }
-    public int       getPlayerCount()         { return players.size(); }
-    public Set<UUID> getPlayers()             { return Collections.unmodifiableSet(players); }
-    public EscoltaCorePlugin getPlugin()      { return plugin; }
+    public String    getName()                 { return name; }
+    public UUID      getOwnerId()              { return ownerId; }
+    public boolean   isPublic()                { return publicArena; }
+    public GameState getState()                { return state; }
+    public UUID      getEscortId()             { return escortId; }
+    public Material  getTargetItem()           { return targetItem; }
+    public double    getRadius()               { return radius; }
+    public void      setRadius(double r)       { this.radius = r; }
+    public Particle  getParticle()             { return particle; }
+    public void      setParticle(Particle p)   { this.particle = p; }
+    public int       getMaxPlayers()           { return maxPlayers; }
+    public void      setMaxPlayers(int m)      { this.maxPlayers = m; updateLobbyBar(); }
+    public Location  getSpawnPoint()           { return spawnPoint; }
+    public void      setSpawnPoint(Location l) { this.spawnPoint = l; }
+    public boolean   isPlayerInGame(Player p)  { return players.contains(p.getUniqueId()); }
+    public int       getPlayerCount()          { return players.size(); }
+    public Set<UUID> getPlayers()              { return Collections.unmodifiableSet(players); }
+    public EscoltaCorePlugin getPlugin()       { return plugin; }
 }
