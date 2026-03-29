@@ -10,46 +10,54 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 /**
- * Draws the protection border and enforces the radius.
+ * ══════════════════════════════════════════════════════════════════════
+ *  RadiusTask — Square border with rising particles
+ * ══════════════════════════════════════════════════════════════════════
  *
- * Visual strategy — OPTIMIZED SPIRAL:
- *   Instead of spawning all N points of a ring each tick (expensive for large radii),
- *   we advance a single "cursor" angle by a fixed arc each tick and spawn a small
- *   cluster of points at multiple heights at that arc position.
+ *  Border shape: SQUARE (4 sides, axis-aligned to world X/Z)
+ *  Side length: radius * 2 (e.g. radius=15 → 30x30 square)
  *
- *   Result per tick: POINTS_PER_TICK × LAYERS particles (default 4 × 3 = 12/tick).
- *   The spiral completes one full revolution every ~2 seconds, giving the illusion
- *   of a solid cylinder without the TPS cost of rendering the whole ring at once.
+ *  Particle motion: columns rise from Y=0 to Y=WALL_HEIGHT
+ *    Each tick, a cursor advances along the perimeter.
+ *    At each perimeter position, a particle is spawned at a Y that
+ *    cycles upward — creating a "wall rising" visual effect.
  *
- *   At 20 TPS, 12 particles/tick per arena is negligible even with 8 simultaneous games.
+ *  Performance: POINTS_PER_TICK particles per tick regardless of radius.
+ *  The perimeter is divided into PERIMETER_STEPS virtual positions.
+ *  Every tick advances by POINTS_PER_TICK steps, wrapping around.
+ *
+ *  Warning zone: WARN_SHRINK blocks inside the border triggers ActionBar.
+ * ══════════════════════════════════════════════════════════════════════
  */
 public class RadiusTask extends BukkitRunnable {
 
-    // ─── Visual tuning ────────────────────────────────────────────────────────────
-    private static final int    POINTS_PER_TICK   = 4;
-    private static final int    FULL_CIRCLE_STEPS = 40;  // 20 TPS × 2s
-    private static final int    LAYERS            = 3;
-    private static final double LAYER_HEIGHT      = 1.0;
-    private static final double Y_OFFSET_BASE     = 0.5;
-    private static final float  DUST_SIZE         = 1.8f;
-    private static final double WARNING_SHRINK    = 3.0;
+    // ── Visual constants ──────────────────────────────────────────────────────
+    private static final int    POINTS_PER_TICK  = 6;       // particles per tick
+    private static final int    PERIMETER_STEPS  = 120;     // virtual points on the square edge
+    private static final double WALL_HEIGHT      = 4.0;     // how tall the wall appears (blocks)
+    private static final double Y_STEP           = 0.4;     // vertical increment per tick cycle
+    private static final double WARN_SHRINK      = 3.0;     // blocks inside border for warning
+    private static final float  DUST_SIZE        = 1.6f;
 
-    // ─── Fields ───────────────────────────────────────────────────────────────────
+    // ── Fields ────────────────────────────────────────────────────────────────
     private final GameArena arena;
-    private final double    radius;
-    private final double    radiusSq;
-    private final double    warningSq;
+    private final double    half;        // radius (half-side of the square)
+    private final double    halfSq;      // half² for distance check (circular check still used)
+    private final double    warnHalf;    // warning zone half-width
     private final Particle  particle;
-    private double angle       = 0;
-    private int    layerCursor = 0;
+
+    private int    perimeterCursor = 0;  // advances each tick
+    private double yPhase          = 0;  // cycles 0 → WALL_HEIGHT, then resets
 
     public RadiusTask(EscoltaCorePlugin plugin, GameArena arena, double radius, Particle particle) {
-        this.arena     = arena;
-        this.radius    = radius;
-        this.radiusSq  = radius * radius;
-        this.particle  = particle;
-        double warnR   = Math.max(1.0, radius - WARNING_SHRINK);
-        this.warningSq = warnR * warnR;
+        this.arena    = arena;
+        this.half     = radius;
+        // We keep the enforcement circular (distanceSquared) — radius = half-diagonal of square
+        // so the square border is inscribed in the circular kill zone. Feels fair.
+        this.halfSq   = radius * radius;
+        double warnR  = Math.max(1.0, radius - WARN_SHRINK);
+        this.warnHalf = warnR;
+        this.particle = particle;
     }
 
     @Override
@@ -67,18 +75,18 @@ public class RadiusTask extends BukkitRunnable {
         World    world  = escort.getWorld();
         boolean  danger = false;
 
-        // ── Draw spiral ─────────────────────────────────────────────────────────
-        double arcStep = (2 * Math.PI) / FULL_CIRCLE_STEPS;
+        // ── Advance Y phase ─────────────────────────────────────────────────
+        yPhase += Y_STEP;
+        if (yPhase > WALL_HEIGHT) yPhase = 0;
+
+        // ── Draw square border ──────────────────────────────────────────────
         for (int i = 0; i < POINTS_PER_TICK; i++) {
-            angle += arcStep;
-            double x   = radius * Math.cos(angle);
-            double z   = radius * Math.sin(angle);
-            double yOff = Y_OFFSET_BASE + (layerCursor % LAYERS) * LAYER_HEIGHT;
-            layerCursor++;
-            spawnParticle(world, center.clone().add(x, yOff, z));
+            perimeterCursor = (perimeterCursor + 1) % PERIMETER_STEPS;
+            Location loc = perimeterToLocation(center, perimeterCursor);
+            if (loc != null) spawnParticle(world, loc);
         }
 
-        // ── Check defenders ─────────────────────────────────────────────────────
+        // ── Check defenders ─────────────────────────────────────────────────
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!arena.isPlayerInGame(p)) continue;
             if (p.getUniqueId().equals(arena.getEscortId())) continue;
@@ -88,14 +96,14 @@ public class RadiusTask extends BukkitRunnable {
             double  distSq    = diffWorld ? Double.MAX_VALUE
                                           : p.getLocation().distanceSquared(center);
 
-            if (diffWorld || distSq > radiusSq) {
+            if (diffWorld || distSq > halfSq) {
                 p.setHealth(0);
                 arena.endGame(false,
                         MessageUtils.get("defeat-out-of-bounds").replace("%player%", p.getName()));
                 cancel();
                 return;
             }
-            if (distSq > warningSq) {
+            if (distSq > warnHalf * warnHalf) {
                 p.sendActionBar(MessageUtils.component(MessageUtils.get("radius-warning")));
                 p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.5f, 2f);
                 danger = true;
@@ -105,6 +113,59 @@ public class RadiusTask extends BukkitRunnable {
         if (danger) escort.addPotionEffect(
                 new PotionEffect(PotionEffectType.GLOWING, 10, 0, false, false));
     }
+
+    // ── Square perimeter mapping ───────────────────────────────────────────────
+
+    /**
+     * Maps a step index (0..PERIMETER_STEPS-1) to a world Location on the square edge.
+     *
+     * Square has 4 sides, each assigned PERIMETER_STEPS/4 virtual points.
+     * The Y coordinate rises with yPhase — particles start at ground and climb upward,
+     * creating a continuous "wall rising" animation.
+     *
+     * Side assignment:
+     *   0..29   → North side  (Z = center.z - half, X varies)
+     *   30..59  → East side   (X = center.x + half, Z varies)
+     *   60..89  → South side  (Z = center.z + half, X varies reversed)
+     *   90..119 → West side   (X = center.x - half, Z varies reversed)
+     */
+    private Location perimeterToLocation(Location center, int step) {
+        int stepsPerSide = PERIMETER_STEPS / 4;
+        int side         = step / stepsPerSide;
+        int indexOnSide  = step % stepsPerSide;
+
+        // t goes 0.0 → 1.0 along the side
+        double t    = (double) indexOnSide / stepsPerSide;
+        double span = half * 2.0;
+
+        double x, z;
+        switch (side) {
+            case 0 -> { // North: X from -half to +half, Z = -half
+                x = center.getX() - half + t * span;
+                z = center.getZ() - half;
+            }
+            case 1 -> { // East: X = +half, Z from -half to +half
+                x = center.getX() + half;
+                z = center.getZ() - half + t * span;
+            }
+            case 2 -> { // South: X from +half to -half, Z = +half
+                x = center.getX() + half - t * span;
+                z = center.getZ() + half;
+            }
+            case 3 -> { // West: X = -half, Z from +half to -half
+                x = center.getX() - half;
+                z = center.getZ() + half - t * span;
+            }
+            default -> { return null; }
+        }
+
+        // Y rises from ground level upward, cycling continuously
+        double y = center.getY() + yPhase;
+
+        return new Location(center.getWorld(), x, y, z);
+    }
+
+    // ── Particle spawning ─────────────────────────────────────────────────────
 
     private void spawnParticle(World world, Location loc) {
         switch (particle) {

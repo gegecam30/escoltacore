@@ -4,6 +4,7 @@ import com.escoltacore.EscoltaCorePlugin;
 import com.escoltacore.managers.ItemManager;
 import com.escoltacore.tasks.CountdownTask;
 import com.escoltacore.tasks.RadiusTask;
+import com.escoltacore.tasks.RouletteTask;
 import com.escoltacore.utils.ItemBuilder;
 import com.escoltacore.utils.MessageUtils;
 import net.kyori.adventure.bossbar.BossBar;
@@ -27,13 +28,13 @@ public class GameArena {
     private final UUID ownerId;
     private final boolean publicArena;
 
-    // ── Config (mutable — updated by reload) ─────────────────────────────────
+    // ── Config ────────────────────────────────────────────────────────────────
     private int maxPlayers;
     private double radius = 15.0;
     private Particle particle = Particle.DUST;
     private Location spawnPoint;
 
-    // ── Runtime state ─────────────────────────────────────────────────────────
+    // ── Runtime ───────────────────────────────────────────────────────────────
     private GameState state = GameState.WAITING;
     private UUID escortId;
     private Material targetItem;
@@ -42,6 +43,7 @@ public class GameArena {
     // Tasks
     private RadiusTask    radiusTask;
     private CountdownTask countdownTask;
+    private RouletteTask  rouletteTask; // NEW
 
     // BossBars
     private BossBar lobbyBar;
@@ -51,7 +53,7 @@ public class GameArena {
     private final Set<UUID> votePlayAgain = new HashSet<>();
     private final Set<UUID> voteLeave     = new HashSet<>();
 
-    // PDC keys (shared with GameListener for item protection)
+    // PDC keys
     public static final NamespacedKey OBJECTIVE_KEY =
             new NamespacedKey("escoltacore", "objective_display");
     public static final NamespacedKey LEAVE_KEY =
@@ -72,7 +74,7 @@ public class GameArena {
         this.itemManager = new ItemManager(plugin);
     }
 
-    /** Private lobby (player-created, deleted when owner leaves) */
+    /** Private lobby (player-created) */
     public GameArena(EscoltaCorePlugin plugin, String name, UUID ownerId, int maxPlayers) {
         this.plugin      = plugin;
         this.name        = name;
@@ -153,7 +155,7 @@ public class GameArena {
                 .build();
         p.getInventory().setItem(8, leaveItem);
 
-        // Slot 0 — Config tool (private lobby owner only)
+        // Slot 0 — Config tool (private owner only)
         if (!publicArena && p.getUniqueId().equals(ownerId)) {
             ItemStack configTool = new ItemBuilder(Material.COMPARATOR)
                     .name(MessageUtils.get("items.config-tool.name"))
@@ -166,7 +168,7 @@ public class GameArena {
     // ── Lobby BossBar ─────────────────────────────────────────────────────────
 
     public void initLobbyBar() {
-        destroyLobbyBar(); // always rebuild fresh
+        destroyLobbyBar();
         String text = MessageUtils.get("lobby-bossbar")
                 .replace("%count%", String.valueOf(players.size()))
                 .replace("%max%",   String.valueOf(maxPlayers));
@@ -216,7 +218,7 @@ public class GameArena {
         state = GameState.WAITING;
     }
 
-    // ── Start ─────────────────────────────────────────────────────────────────
+    // ── Start (entry point — called by countdown or owner) ────────────────────
 
     public void start(Player initiator) {
         if (!publicArena && initiator != null) {
@@ -235,12 +237,14 @@ public class GameArena {
         if (countdownTask != null) { countdownTask.cancel(); countdownTask = null; }
         destroyLobbyBar();
 
+        // ── Decide roles and objective BEFORE roulette ─────────────────────
         state = GameState.STARTING;
         List<UUID> list = new ArrayList<>(players);
         Collections.shuffle(list);
         this.escortId   = list.get(0);
         this.targetItem = itemManager.getRandomTarget();
 
+        // ── Teleport & prepare players ─────────────────────────────────────
         Location spawn = resolveSpawn();
         for (UUID uuid : players) {
             Player p = Bukkit.getPlayer(uuid);
@@ -250,22 +254,89 @@ public class GameArena {
             p.setHealth(20);
             p.setFoodLevel(20);
             p.setGameMode(GameMode.SURVIVAL);
+        }
+
+        // ── Launch roulette — game officially starts in the callback ───────
+        launchRoulette();
+    }
+
+    public void start() { start(null); }
+
+    // ── Roulette ──────────────────────────────────────────────────────────────
+
+    /**
+     * Builds and starts the RouletteTask.
+     * The callback (onFinished) fires after the winner reveal animation completes
+     * and all inventories are closed — this is where the real game begins.
+     */
+    private void launchRoulette() {
+        List<Material> pool = buildRoulettePool();
+
+        rouletteTask = new RouletteTask(
+                plugin,
+                this,
+                pool,
+                targetItem,
+                this::onRouletteFinished  // callback — fires on main thread
+        );
+
+        rouletteTask.openAndStart();
+    }
+
+    /**
+     * Builds the material list for the roulette belt.
+     * If sprite-pool is active, uses those.
+     * Falls back to a curated set of common materials to keep the belt interesting.
+     */
+    private List<Material> buildRoulettePool() {
+        List<Material> whitelist = itemManager.getWhitelist();
+        if (!whitelist.isEmpty()) return new ArrayList<>(whitelist);
+
+        // Full-random mode: generate a visually nice pool on the fly
+        return List.of(
+                Material.DIAMOND, Material.EMERALD, Material.GOLD_INGOT,
+                Material.IRON_INGOT, Material.COAL, Material.OAK_LOG,
+                Material.STONE, Material.OBSIDIAN, Material.SAND,
+                Material.GRAVEL, Material.NETHERITE_INGOT, Material.QUARTZ,
+                Material.AMETHYST_SHARD, Material.COPPER_INGOT, Material.LAPIS_LAZULI
+        );
+    }
+
+    /**
+     * Called by RouletteTask when the animation completes.
+     * This is where the game actually starts — roles revealed, items given, tasks launched.
+     */
+    private void onRouletteFinished() {
+        rouletteTask = null;
+        state = GameState.RUNNING;
+
+        Player escortPlayer = Bukkit.getPlayer(escortId);
+        if (escortPlayer == null) { forceStop(); return; }
+
+        // Give role titles
+        for (UUID uuid : players) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p == null) continue;
 
             if (p.getUniqueId().equals(escortId)) {
                 sendTitle(p, "game-intro-title", "game-intro-subtitle");
             } else {
                 sendTitle(p, "defender-intro-title", "defender-intro-subtitle");
             }
-            giveObjectiveItem(p); // todos reciben el mapa del objetivo
+            // Give objective display item (map or fallback)
+            giveObjectiveItem(p);
         }
-        state = GameState.RUNNING;
+
+        // Broadcast objective in chat
         broadcastObjective();
+
+        // Game BossBar
         spawnGameBar();
+
+        // Launch radius enforcement
         radiusTask = new RadiusTask(plugin, this, radius, particle);
         radiusTask.runTaskTimer(plugin, 0L, 1L);
     }
-
-    public void start() { start(null); }
 
     // ── Objective display item ────────────────────────────────────────────────
 
@@ -275,14 +346,12 @@ public class GameArena {
         List<String> loreLines = MessageUtils.getList("items.objective-display.lore")
                 .stream().map(line -> line.replace("%item%", itemName)).toList();
 
-        // Try sprite map first
         com.escoltacore.map.SpriteMapManager smm = plugin.getSpriteMapManager();
         ItemStack obj = null;
         if (smm != null && smm.hasSprite(targetItem)) {
             obj = smm.createMapItem(targetItem, name, displayName,
                     loreLines.toArray(new String[0]));
         }
-        // Fallback to KNOWLEDGE_BOOK with PDC tag
         if (obj == null) {
             obj = new ItemBuilder(Material.KNOWLEDGE_BOOK)
                     .name(displayName)
@@ -358,7 +427,7 @@ public class GameArena {
             broadcastTitle(MessageUtils.get("defeat-title"), MessageUtils.get("defeat-subtitle"));
             playSoundGlobal(Sound.ENTITY_WITHER_DEATH, 1f, 0.5f);
         }
-        // Show vote after 2 s (players see the title first)
+
         Bukkit.getScheduler().runTaskLater(plugin, this::startVote, 40L);
     }
 
@@ -384,7 +453,7 @@ public class GameArena {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null) p.sendMessage(msg);
         }
-        // Auto-resolve after 15 s
+
         Bukkit.getScheduler().runTaskLater(plugin, this::resolveVote, 20L * 15);
     }
 
@@ -432,7 +501,6 @@ public class GameArena {
         votePlayAgain.clear();
         voteLeave.clear();
 
-        // Free old MapViews before giving new lobby items
         if (plugin.getSpriteMapManager() != null)
             plugin.getSpriteMapManager().freeArenaMaps(name);
 
@@ -449,10 +517,9 @@ public class GameArena {
             }
         }
 
-        initLobbyBar(); // always rebuilds fresh (destroys old one internally)
+        initLobbyBar();
         broadcastRaw(MessageUtils.get("arena-wait-reset"));
 
-        // Public + full → restart countdown (Play Again case)
         if (publicArena && players.size() >= maxPlayers) startCountdown();
     }
 
@@ -461,6 +528,7 @@ public class GameArena {
     public void forceStop() {
         if (radiusTask    != null) { radiusTask.cancel();    radiusTask    = null; }
         if (countdownTask != null) { countdownTask.cancel(); countdownTask = null; }
+        if (rouletteTask  != null) { rouletteTask.cancel();  rouletteTask  = null; }
         clearGameBar();
         destroyLobbyBar();
         if (plugin.getSpriteMapManager() != null)
@@ -468,9 +536,10 @@ public class GameArena {
         state = GameState.WAITING;
         votePlayAgain.clear();
         voteLeave.clear();
+        // Close any open roulette inventories
         for (UUID uuid : new HashSet<>(players)) {
             Player p = Bukkit.getPlayer(uuid);
-            if (p != null) { p.getInventory().clear(); p.setHealth(20); p.setFoodLevel(20); }
+            if (p != null) { p.getInventory().clear(); p.setHealth(20); p.setFoodLevel(20); p.closeInventory(); }
         }
         players.clear();
     }
@@ -501,8 +570,11 @@ public class GameArena {
     }
 
     private void sendTitle(Player p, String tKey, String sKey) {
-        p.showTitle(Title.title(MessageUtils.componentFromKey(tKey), MessageUtils.componentFromKey(sKey),
-                Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(2), Duration.ofMillis(500))));
+        p.showTitle(Title.title(
+                MessageUtils.componentFromKey(tKey),
+                MessageUtils.componentFromKey(sKey),
+                Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(2),
+                        Duration.ofMillis(500))));
     }
 
     private void playSoundGlobal(Sound s, float vol, float pitch) {
@@ -540,4 +612,15 @@ public class GameArena {
     public int       getPlayerCount()          { return players.size(); }
     public Set<UUID> getPlayers()              { return Collections.unmodifiableSet(players); }
     public EscoltaCorePlugin getPlugin()       { return plugin; }
+
+    /** Exposes rouletteTask so GameListener can block inventory clicks during roulette. */
+    public boolean isRouletteActive()          { return rouletteTask != null; }
+
+    /**
+     * Re-opens the roulette inventory for a specific player.
+     * Called by GameListener when a player accidentally closes it mid-spin.
+     */
+    public void reopenRouletteFor(Player p) {
+        if (rouletteTask != null) rouletteTask.openFor(p);
+    }
 }
